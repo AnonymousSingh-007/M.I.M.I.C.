@@ -1,14 +1,71 @@
-from mimic import collector, model, spoofer, visuals
+# import sys
+# from rich.console import Console
+# from mimic import spoofer, model, visuals
+
+# console = Console()
+
+
+# def main():
+#     visuals.intro_sequence()
+
+#     while True:
+#         console.print("\n[bold blue]Main Menu:[/bold blue]")
+#         console.print("[cyan][1][/cyan] 🖱️ Collect mouse data")
+#         console.print("[cyan][2][/cyan] 🧠 Train model")
+#         console.print("[cyan][3][/cyan] 🤖 Run cursor spoofer")
+#         console.print("[cyan][4][/cyan] ❌ Exit\n")
+
+#         choice = input("Choose an option: ").strip()
+
+#         if choice == "1":
+#             duration = input("Duration in seconds to collect? [default 15]: ").strip()
+#             try:
+#                 duration = int(duration)
+#             except:
+#                 duration = 15
+#             spoofer.record_mouse_movements(duration=duration)
+
+#         elif choice == "2":
+#             csv_path = input("Path to CSV file (default: data/mouse_movements.csv): ").strip()
+#             if not csv_path:
+#                 csv_path = "data/mouse_movements.csv"
+#             model.train(csv_path)
+
+#         elif choice == "3":
+#             mdl = model.load_model()
+#             spoofer.simulate_movement(mdl)
+
+#         elif choice == "4":
+#             console.print("[bold red]👋 Exiting M.I.M.I.C.[/bold red]")
+#             sys.exit()
+
+#         else:
+#             console.print("[bold red]Invalid option. Please choose 1–4.[/bold red]")
+
+
+# if __name__ == "__main__":
+#     main()
+
+#trying dynamic time
 import sys
+from rich.console import Console
+from mimic import spoofer, model, visuals
+
+console = Console()
+recorded_duration = 0  # Track last data collection time
+
 
 def main():
+    global recorded_duration
     visuals.intro_sequence()
 
     while True:
-        print("\n[1] Collect mouse data")
-        print("[2] Train model")
-        print("[3] Run cursor spoofer")
-        print("[4] Exit\n")
+        console.print("\n[bold blue]Main Menu:[/bold blue]")
+        console.print("[cyan][1][/cyan] 🖱️ Collect mouse data")
+        console.print("[cyan][2][/cyan] 🧠 Train model")
+        console.print("[cyan][3][/cyan] 🤖 Run cursor spoofer")
+        console.print("[cyan][4][/cyan] ❌ Exit\n")
+
         choice = input("Choose an option: ").strip()
 
         if choice == "1":
@@ -17,24 +74,44 @@ def main():
                 duration = int(duration)
             except:
                 duration = 15
-            collector.collect_movements(duration=duration)
+
+            recorded_duration = duration  # Save for later comparison
+            spoofer.record_mouse_movements(duration=duration)
 
         elif choice == "2":
-            csv_path = "data/mouse_movements.csv"
-            mdl = model.train_model(csv_path)
-            if mdl:
-                model.save_model(mdl)
+            csv_path = input("Path to CSV file (default: data/mouse_movements.csv): ").strip()
+            if not csv_path:
+                csv_path = "data/mouse_movements.csv"
+            model.train(csv_path)
 
         elif choice == "3":
+            if recorded_duration == 0:
+                console.print("[bold red]⚠️ Please collect mouse data first![/bold red]")
+                continue
+
+            # Max spoof duration = 75% of collected
+            max_spoof = int(0.75 * recorded_duration)
+            prompt = f"Enter spoofing duration (max {max_spoof} seconds) [default {min(5, max_spoof)}]: "
+            spoof_duration = input(prompt).strip()
+
+            try:
+                spoof_duration = int(spoof_duration)
+                if spoof_duration > max_spoof:
+                    console.print(f"[yellow]⚠️ Capping duration to max allowed: {max_spoof}s[/yellow]")
+                    spoof_duration = max_spoof
+            except:
+                spoof_duration = min(5, max_spoof)
+
             mdl = model.load_model()
-            spoofer.simulate_movement(mdl)
+            spoofer.simulate_movement(mdl, duration=spoof_duration)
 
         elif choice == "4":
-            print("Exiting.")
+            console.print("[bold red]👋 Exiting M.I.M.I.C.[/bold red]")
             sys.exit()
 
         else:
-            print("Invalid option.")
+            console.print("[bold red]Invalid option. Please choose 1–4.[/bold red]")
+
 
 if __name__ == "__main__":
     main()
