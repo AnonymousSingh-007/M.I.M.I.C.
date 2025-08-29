@@ -5,5 +5,7 @@ matplotlib
 opencv-python
 torch
 torchvision
+torchaudio
 rich
 pygame
+pyttsx3
