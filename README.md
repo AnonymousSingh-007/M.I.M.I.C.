@@ -5,7 +5,7 @@ Welcome to M.I.M.I.C, a cutting-edge, machine learning-driven cursor spoofer des
 ---
 
 🚀 Project Overview
-M.I.M.I.C (Machine Intelligence Mimicking Cursor) leverages a Multi-Layer Perceptron (MLP) trained on real human mouse data to simulate natural cursor behavior. Whether you're testing anti-spoofing systems, exploring ML-driven automation, or just hacking around, M.I.M.I.C delivers a sleek, hacker-ish experience with rich console visuals and a modular, extensible codebase.
+M.I.M.I.C (Machine Intelligence Mimicking Cursor) leverages a Long-Short Term Memory (LSTM) trained on real human mouse data to simulate natural cursor behavior. Whether you're testing anti-spoofing systems, exploring ML-driven automation, or just hacking around, M.I.M.I.C delivers a sleek, hacker-ish experience with rich console visuals and a modular, extensible codebase.
 Core Objectives:
 
 🖱️ Capture: Record authentic human mouse movements (X, Y, timestamp).
@@ -21,11 +21,12 @@ Language: Python 3.13.5
 Libraries:
 PyAutoGUI: For real-time cursor control.
 Pandas: Data handling and CSV storage.
-PyTorch: Neural network training (MLP).
+PyTorch: Sequential Model Training(LSTM).
 Rich: Slick console visuals and UX.
 scikit-learn: Data preprocessing and utilities.
 OpenCV: Visual tracking enhancements.
 Pygame: Optional visualization and input handling.
+Matplotlib: Automatic graphs of real vs. spoofed movements.
 
 ---
 
@@ -65,7 +66,7 @@ Saves movement data for reproducibility and analysis.
 
 Neural Network Training
 ✅
-Uses a PyTorch MLP to learn movement patterns.
+Uses a PyTorch LSTM to learn movement patterns.
 
 
 Real-Time Cursor Spoofing
@@ -96,7 +97,7 @@ Format: time, x, y
 
 2. Model Training
 
-Architecture: Multi-Layer Perceptron (MLP) in PyTorch.
+Architecture: LSTM in PyTorch.
 Input: Timestamp.
 Output: Predicted (X, Y) cursor position.
 Training: Learns smooth, human-like movement patterns from collected data.
@@ -171,3 +172,4 @@ This project is licensed under the MIT License. See the LICENSE file for details
 ---
 
 ## "Code like Tony Stark, sneak like Batman."Dive into M.I.M.I.C and start spoofing the unspoofable. 🚀
+
