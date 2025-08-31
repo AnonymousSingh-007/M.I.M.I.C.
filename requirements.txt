@@ -9,3 +9,6 @@ torchaudio
 rich
 pygame
 pyttsx3
+pynput
+joblib
+pandas
