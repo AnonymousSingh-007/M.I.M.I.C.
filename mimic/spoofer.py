@@ -55,7 +55,7 @@ def collect_data(csv_path="data/mouse_data.csv", duration=30):
 # =============================
 def train_lstm(csv_path, model_path="models/mimic_lstm.pt",
                scaler_path="models/mimic_scaler.pkl",
-               seq_len=100, epochs=50, lr=0.001):
+               seq_len=50, epochs=200, lr=0.001):
 
     df = pd.read_csv(csv_path)
     if {"dx", "dy"}.issubset(df.columns):
