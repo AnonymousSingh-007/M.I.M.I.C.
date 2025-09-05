@@ -1,107 +1,38 @@
-
-# mimic/spoofer.py
-
+#mimic/spoofer.py
 import time
 import pandas as pd
 import numpy as np
 import torch
-import torch.nn as nn
-from sklearn.preprocessing import MinMaxScaler
 import joblib
 import matplotlib.pyplot as plt
 import pyautogui
-from pynput import mouse
+from mimic.model import LSTMModel
 
 # =============================
-#   LSTM Model
+#   Load Model + Scaler
 # =============================
-class MouseLSTM(nn.Module):
-    def __init__(self, input_size=2, hidden_size=128, num_layers=2, output_size=2):
-        super(MouseLSTM, self).__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
-        self.fc = nn.Linear(hidden_size, output_size)
-
-    def forward(self, x):
-        out, _ = self.lstm(x)
-        return self.fc(out[:, -1, :])
-
-
-# =============================
-#   Data Collection
-# =============================
-def collect_data(csv_path="data/mouse_data.csv", duration=30):
-    coords = []
-
-    def on_move(x, y):
-        coords.append((time.time(), x, y))
-
-    listener = mouse.Listener(on_move=on_move)
-    listener.start()
-
-    print(f"📡 Recording mouse movement for {duration} seconds...")
-    time.sleep(duration)
-    listener.stop()
-
-    df = pd.DataFrame(coords, columns=["time", "x", "y"])
-    df["dx"] = df["x"].diff().fillna(0)
-    df["dy"] = df["y"].diff().fillna(0)
-    df.to_csv(csv_path, index=False)
-
-    print(f"✅ Data saved to {csv_path}")
-
-
-# =============================
-#   Training
-# =============================
-def train_lstm(csv_path, model_path="models/mimic_lstm.pt",
-               scaler_path="models/mimic_scaler.pkl",
-               seq_len=50, epochs=200, lr=0.001):
-
-    df = pd.read_csv(csv_path)
-    if {"dx", "dy"}.issubset(df.columns):
-        data = df[["dx", "dy"]].values
-    else:
-        coords = df[["x", "y"]].values
-        data = np.diff(coords, axis=0)
-
-    scaler = MinMaxScaler()
-    data_scaled = scaler.fit_transform(data)
-
-    X, y = [], []
-    for i in range(len(data_scaled) - seq_len):
-        X.append(data_scaled[i:i+seq_len])
-        y.append(data_scaled[i+seq_len])
-    X, y = np.array(X), np.array(y)
-
-    X_tensor = torch.tensor(X, dtype=torch.float32)
-    y_tensor = torch.tensor(y, dtype=torch.float32)
-
-    model = MouseLSTM()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    loss_fn = nn.MSELoss()
-
-    for epoch in range(1, epochs+1):
-        model.train()
-        optimizer.zero_grad()
-        output = model(X_tensor)
-        loss = loss_fn(output, y_tensor)
-        loss.backward()
-        optimizer.step()
-
-        if epoch % 10 == 0:
-            print(f"Epoch {epoch}/{epochs}, Loss: {loss.item():.6f}")
-
-    torch.save(model.state_dict(), model_path)
-    joblib.dump(scaler, scaler_path)
-
-    print("✅ Model and scaler saved.")
-
-
-def load_model_and_scaler(model_path, scaler_path):
-    model = MouseLSTM()
-    model.load_state_dict(torch.load(model_path))
-    model.eval()
+def load_model_and_scaler(model_path, scaler_path, device="cpu"):
+    """
+    Load trained LSTM + scaler.
+    Infers output_size (horizon*2) from saved weights.
+    """
     scaler = joblib.load(scaler_path)
+    state = torch.load(model_path, map_location=device)
+
+    # infer output size from fc layer
+    fc_weight = None
+    for k, v in state.items():
+        if k.endswith("fc.weight"):
+            fc_weight = v
+            break
+    if fc_weight is None:
+        raise RuntimeError("Couldn't find fc.weight in checkpoint.")
+    output_size = fc_weight.shape[0]
+
+    model = LSTMModel(input_size=4, hidden_size=128, num_layers=2, output_size=int(output_size))
+    model.load_state_dict(state)
+    model.to(device)
+    model.eval()
     return model, scaler
 
 
@@ -111,74 +42,116 @@ def load_model_and_scaler(model_path, scaler_path):
 def spoof_and_plot(model_path="models/mimic_lstm.pt",
                    scaler_path="models/mimic_scaler.pkl",
                    csv_path="data/mouse_data.csv",
-                   seq_len=100,
-                   steps=500,
+                   seq_len=70, # Adjusted to match your config
+                   steps=1000, # Increased for a longer path
                    move_delay=0.001):
+    """
+    Run spoofer with boundaries to prevent fail-safe.
+      - Uses pre-computed features from CSV
+      - Seeds last seq_len frames
+      - Generates multiple predicted steps per loop
+    """
+    # Set a custom failsafe region in the center of the screen
+    # These are percentages of the screen size
+    pyautogui.FAILSAFE = False
+    screen_width, screen_height = pyautogui.size()
+    left_bound = screen_width * 0.1
+    right_bound = screen_width * 0.9
+    top_bound = screen_height * 0.1
+    bottom_bound = screen_height * 0.9
 
-    model, scaler = load_model_and_scaler(model_path, scaler_path)
+    device = "cpu"
+    model, scaler = load_model_and_scaler(model_path, scaler_path, device=device)
+    horizon = int(model.fc.out_features / 2)
 
     df = pd.read_csv(csv_path)
-    if {"dx", "dy"}.issubset(df.columns):
-        data = df[["dx", "dy"]].values
-    else:
-        coords = df[["x", "y"]].values
-        data = np.diff(coords, axis=0)
+    features = df[["dx", "dy", "speed", "dt"]].values.astype(np.float32)
+    
+    # scale
+    features_scaled = scaler.transform(features)
+    if len(features_scaled) < seq_len:
+        raise ValueError(f"Not enough data ({len(features_scaled)}) for seq_len={seq_len}. Please collect more mouse data.")
 
-    data_scaled = scaler.transform(data)
-    seq = torch.tensor(data_scaled[-seq_len:], dtype=torch.float32).unsqueeze(0)
+    seq = torch.tensor(features_scaled[-seq_len:], dtype=torch.float32, device=device).unsqueeze(0)
 
+    recorded_deltas = features[:, :2]  # for plotting
     generated = []
+    last_dt = float(features[-1, 3]) if features.shape[0] > 0 else 1e-3
+
     current_x, current_y = pyautogui.position()
 
     print("🎮 Spoofing mouse now...")
-    with torch.no_grad():
-        for _ in range(steps):
-            pred = model(seq).numpy()[0]
-            dx, dy = scaler.inverse_transform([pred])[0]
-            current_x += dx
-            current_y += dy
-            pyautogui.moveTo(current_x, current_y)   # 👈 move cursor
-            time.sleep(move_delay)
-            generated.append([dx, dy])
-            seq = torch.cat([seq[:, 1:, :], torch.tensor(pred).view(1, 1, -1)], dim=1)
+    try:
+        with torch.no_grad():
+            for _ in range(steps):
+                preds_scaled = model(seq).cpu().numpy()[0]
+                
+                # Predict horizon steps, one by one
+                current_preds = np.reshape(preds_scaled, (horizon, 2))
+                
+                for pred_dx_s, pred_dy_s in current_preds:
+                    # inverse transform (fill with zeros for speed/dt)
+                    row_scaled = np.array([[pred_dx_s, pred_dy_s, 0.0, 0.0]], dtype=np.float32)
+                    row_unscaled = scaler.inverse_transform(row_scaled)[0]
+                    pred_dx, pred_dy = float(row_unscaled[0]), float(row_unscaled[1])
+
+                    # calculate next position based on prediction
+                    next_x = current_x + pred_dx
+                    next_y = current_y + pred_dy
+
+                    # Enforce the boundaries. Clamp to the boundary and reverse direction if needed.
+                    if next_x < left_bound:
+                        next_x = left_bound
+                        pred_dx = 0 # stop moving horizontally
+                    elif next_x > right_bound:
+                        next_x = right_bound
+                        pred_dx = 0
+                    
+                    if next_y < top_bound:
+                        next_y = top_bound
+                        pred_dy = 0 # stop moving vertically
+                    elif next_y > bottom_bound:
+                        next_y = bottom_bound
+                        pred_dy = 0
+
+                    current_x = next_x
+                    current_y = next_y
+
+                    pyautogui.moveTo(current_x, current_y)
+                    time.sleep(move_delay)
+
+                    generated.append([pred_dx, pred_dy])
+
+                # build next feature for sequence
+                pred_dx, pred_dy = generated[-1]
+                pred_speed = float(np.hypot(pred_dx, pred_dy))
+                new_feature_unscaled = np.array([[pred_dx, pred_dy, pred_speed, last_dt]], dtype=np.float32)
+                new_feature_scaled = scaler.transform(new_feature_unscaled)[0]
+
+                new_feat_tensor = torch.tensor(new_feature_scaled, dtype=torch.float32, device=device).view(1, 1, -1)
+                seq = torch.cat([seq[:, 1:, :], new_feat_tensor], dim=1)
+
+    except pyautogui.FailSafeException:
+        print("[red]❌ PyAutoGUI fail-safe triggered. Spoofing has been stopped.")
+        if not generated:
+            print("[yellow]No movements were generated before the fail-safe was triggered.")
+            return
 
     print("✅ Spoofing finished. Showing graph...")
 
-    # === Graph ===
+    # === Plot ===
     generated = np.array(generated)
+    rec_cum_x, rec_cum_y = np.cumsum(recorded_deltas[:, 0]), np.cumsum(recorded_deltas[:, 1])
+    gen_cum_x, gen_cum_y = np.cumsum(generated[:, 0]), np.cumsum(generated[:, 1])
+
     plt.figure()
     plt.title("Mouse Movement: Recorded vs Generated")
-    plt.plot(np.cumsum(data[:, 0]), np.cumsum(data[:, 1]), label="Recorded Path", color="blue")
-    plt.plot(np.cumsum(generated[:, 0]), np.cumsum(generated[:, 1]), label="Generated Path", color="red")
+    plt.plot(rec_cum_x, rec_cum_y, label="Recorded Path")
+    plt.plot(gen_cum_x, gen_cum_y, label="Generated Path")
     plt.legend()
+    plt.xlabel("Cumulative dx")
+    plt.ylabel("Cumulative dy")
+    plt.axis('equal') # better scaling
+    plt.grid(True)
     plt.show()
 
-
-# =============================
-#   Menu
-# =============================
-def main():
-    while True:
-        print("\n🎮 MIMIC Control Panel")
-        print("1. 🖱️ Collect mouse data")
-        print("2. 🧠 Train LSTM model")
-        print("3. 🤖 Run cursor spoofer (Live + Graph)")
-        print("4. ❌ Exit")
-
-        choice = input("Enter choice: ").strip()
-
-        if choice == "1":
-            collect_data()
-        elif choice == "2":
-            train_lstm("data/mouse_data.csv")
-        elif choice == "3":
-            spoof_and_plot()
-        elif choice == "4":
-            print("Exiting... Goodbye!")
-            break
-        else:
-            print("Invalid choice.")
-
-
-if __name__ == "__main__":
-    main()
