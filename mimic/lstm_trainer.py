@@ -14,7 +14,7 @@ from mimic.model import LSTMModel
 # ============================
 # Sequence Builder
 # ============================
-def create_sequences(data, seq_len, horizon=5):
+def create_sequences(data, seq_len, horizon=2):
     """
     Creates (sequence, target) pairs from feature data.
     - seq = past `seq_len` frames
@@ -36,7 +36,7 @@ def train_lstm(
     model_path="models/mimic_lstm.pt",
     scaler_path="models/mimic_scaler.pkl",
     seq_len=70,
-    horizon=3,
+    horizon=2,
     hidden_size=128,
     num_layers=2,
     epochs=200,
@@ -103,7 +103,7 @@ def train_lstm(
 # ============================
 def load_model_and_scaler(model_path="models/mimic_lstm.pt",
                           scaler_path="models/mimic_scaler.pkl",
-                          horizon=3,
+                          horizon=2,
                           hidden_size=128,
                           num_layers=2):
     scaler = joblib.load(scaler_path)

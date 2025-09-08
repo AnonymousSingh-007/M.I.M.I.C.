@@ -7,7 +7,7 @@ venv/
 
 # Logs, data, etc.
 *.log
-data/*.csv
+
 
 # VSCode
 .vscode/
