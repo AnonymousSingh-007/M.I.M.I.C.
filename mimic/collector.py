@@ -1,4 +1,5 @@
-#mimic/collector.py
+#curvature
+# mimic/collector.py
 
 import pandas as pd
 import pyautogui
@@ -6,18 +7,14 @@ import time
 import os
 import numpy as np
 from rich.console import Console
-from rich.progress import track
+from rich.progress import Progress, BarColumn, TimeRemainingColumn, TextColumn
 
 console = Console()
 
-def collect_movements(filename="data/mouse_data.csv", duration=30):
+def collect_movements(filename="data/mouse_data.csv", duration=60):
     """
     Collects mouse cursor positions, computes features, and saves to CSV.
-    Features: (dx, dy, speed, dt)
-    
-    Args:
-        filename (str): Path to the CSV file where data will be saved.
-        duration (int): Duration of collection in seconds.
+    Features: (dx, dy, speed, dt, curvature)
     """
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 
@@ -28,16 +25,28 @@ def collect_movements(filename="data/mouse_data.csv", duration=30):
     time.sleep(2)  # small delay before starting
     
     raw_data = []
-    
-    # Use a high sample rate for accurate deltas
-    sample_rate = 100 # Hz
+    sample_rate = 100  # Hz
     interval = 1.0 / sample_rate
 
-    for _ in track(range(int(duration * sample_rate)), description="Collecting..."):
-        now = time.time()
-        x, y = pyautogui.position()
-        raw_data.append((now, x, y))
-        time.sleep(interval)
+    with Progress(
+        TextColumn("[bold green]Recording Mouse Movements...[/bold green]"),
+        BarColumn(bar_width=None),
+        "[progress.percentage]{task.percentage:>3.0f}%",
+        TimeRemainingColumn(),
+        console=console,
+        transient=True
+    ) as progress:
+        task = progress.add_task("Collecting...", total=duration)
+        start_time = time.time()
+        
+        while not progress.finished:
+            now = time.time()
+            x, y = pyautogui.position()
+            raw_data.append((now, x, y))
+            time.sleep(interval)
+            
+            elapsed = time.time() - start_time
+            progress.update(task, completed=elapsed)
 
     if not raw_data:
         console.print("[red]❌ No data was collected. Please try again.[/red]")
@@ -54,6 +63,20 @@ def collect_movements(filename="data/mouse_data.csv", duration=30):
     
     speed = np.linalg.norm(deltas, axis=1, keepdims=True)
     
+    # Calculate curvature (angle of turn)
+    curvature = np.zeros_like(speed)
+    if len(deltas) > 1:
+        v1 = deltas[:-1]
+        v2 = deltas[1:]
+        
+        dot_product = np.einsum('ij,ij->i', v1, v2)
+        mags = np.linalg.norm(v1, axis=1) * np.linalg.norm(v2, axis=1)
+        
+        mags = np.where(mags == 0, 1e-8, mags)
+        cos_angle = np.clip(dot_product / mags, -1.0, 1.0)
+        
+        curvature[1:] = np.arccos(cos_angle).reshape(-1, 1)
+
     # Create the features DataFrame
     features_df = pd.DataFrame({
         'time': times[1:],
@@ -62,7 +85,8 @@ def collect_movements(filename="data/mouse_data.csv", duration=30):
         'dx': deltas[:, 0],
         'dy': deltas[:, 1],
         'speed': speed[:, 0],
-        'dt': dts
+        'dt': dts,
+        'curvature': curvature[:, 0]
     })
     
     features_df.to_csv(filename, index=False)

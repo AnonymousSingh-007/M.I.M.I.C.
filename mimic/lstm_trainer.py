@@ -1,3 +1,4 @@
+#curvature
 # mimic/lstm_trainer.py
 
 import os
@@ -10,6 +11,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 from mimic.model import LSTMModel
+
 
 # ============================
 # Sequence Builder
@@ -46,11 +48,12 @@ def train_lstm(
     """
     Train LSTM to predict multiple future (dx, dy) steps from past sequence.
     Normalizes per-session with StandardScaler.
+    Features: dx, dy, speed, dt, curvature
     """
     df = pd.read_csv(csv_path)
 
     # Use pre-computed features from collector.py
-    features = df[["dx", "dy", "speed", "dt"]].values.astype(np.float32)
+    features = df[["dx", "dy", "speed", "dt", "curvature"]].values.astype(np.float32)
     
     # normalize features
     scaler = StandardScaler()
@@ -68,7 +71,7 @@ def train_lstm(
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     # model
-    model = LSTMModel(input_size=4, hidden_size=hidden_size,
+    model = LSTMModel(input_size=5, hidden_size=hidden_size,
                       num_layers=num_layers, output_size=horizon*2)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -107,11 +110,12 @@ def load_model_and_scaler(model_path="models/mimic_lstm.pt",
                           hidden_size=128,
                           num_layers=2):
     scaler = joblib.load(scaler_path)
-    model = LSTMModel(input_size=4, hidden_size=hidden_size,
+    model = LSTMModel(input_size=5, hidden_size=hidden_size,
                       num_layers=num_layers, output_size=horizon*2)
     model.load_state_dict(torch.load(model_path, map_location="cpu"))
     model.eval()
     return model, scaler
+
 
 if __name__ == "__main__":
     csv_path = "../data/mouse_data.csv"
@@ -123,6 +127,6 @@ if __name__ == "__main__":
         model_path=model_path,
         scaler_path=scaler_path,
         seq_len=100,
-        epochs=250,
+        epochs=200,
         batch_size=128
     )
