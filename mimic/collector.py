@@ -25,7 +25,7 @@ def collect_movements(filename="data/mouse_data.csv", duration=60):
     time.sleep(2)  # small delay before starting
     
     raw_data = []
-    sample_rate = 100  # Hz
+    sample_rate = 200  # Hz
     interval = 1.0 / sample_rate
 
     with Progress(
