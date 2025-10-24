@@ -1,175 +1,229 @@
-🧠 M.I.M.I.C: Machine Intelligence Mimicking Cursor
-"Looks real. Isn’t."
-Welcome to M.I.M.I.C, a cutting-edge, machine learning-driven cursor spoofer designed to emulate human mouse movements with uncanny precision. Built for researchers, security enthusiasts, and tech tinkerers, M.I.M.I.C captures real user input, trains a neural network to replicate it, and deploys hyper-realistic cursor movements to challenge anti-bot and detection systems. Think of it as a digital doppelgänger for your mouse—part Iron Man tech, part Batman stealth.
+
+# 🧠 M.I.M.I.C — Machine Intelligence Mimicking Cursor
+
+> **“Looks real. Isn’t.”**
+
+Welcome to **M.I.M.I.C.**, a machine-learning-driven cursor spoofer that emulates human mouse movements with high realism. Built for researchers, security testers, and tinkerers, M.I.M.I.C captures real user input, trains a sequence model to replicate it, and can deploy hyper-realistic cursor movements for evaluation and experimentation.
+
+> **Note:** This project is intended for research, testing, and educational purposes only. Do **not** use it to bypass security systems or on systems you don't have explicit permission to test. See the **Ethical Use** section below.
 
 ---
 
-🚀 Project Overview
-M.I.M.I.C (Machine Intelligence Mimicking Cursor) leverages a Long-Short Term Memory (LSTM) trained on real human mouse data to simulate natural cursor behavior. Whether you're testing anti-spoofing systems, exploring ML-driven automation, or just hacking around, M.I.M.I.C delivers a sleek, hacker-ish experience with rich console visuals and a modular, extensible codebase.
-Core Objectives:
+## 🚀 Project Overview
 
-🖱️ Capture: Record authentic human mouse movements (X, Y, timestamp).
-🤖 Learn: Train a neural network to predict realistic motion patterns.
-🎯 Spoof: Simulate human-like cursor movements in real-time.
-🧪 Test: Challenge detection systems with lifelike input patterns.
+**M.I.M.I.C.** (Machine Intelligence Mimicking Cursor) uses sequence modeling (LSTM-based seq2seq) trained on recorded mouse movements to generate realistic cursor trajectories.
 
----
+**Core objectives**
 
-🛠️ Tech Stack
-
-Language: Python 3.13.5
-Libraries:
-PyAutoGUI: For real-time cursor control.
-Pandas: Data handling and CSV storage.
-PyTorch: Sequential Model Training(LSTM).
-Rich: Slick console visuals and UX.
-scikit-learn: Data preprocessing and utilities.
-OpenCV: Visual tracking enhancements.
-Pygame: Optional visualization and input handling.
-Matplotlib: Automatic graphs of real vs. spoofed movements.
+* 🖱️ **Capture** — record authentic human mouse movements (normalized deltas, speed, dt, curvature).
+* 🤖 **Learn** — train a sequence-to-sequence model to predict motion patterns.
+* 🎯 **Spoof** — generate and replay human-like cursor motion in real time.
+* 🧪 **Test** — provide realistic input for anti-spoofing/behavioral analysis.
 
 ---
 
-📁 Project Structure
+## 🛠️ Tech stack
+
+* Language: **Python 3.x**
+* Libraries:
+
+  * `pyautogui` — real-time cursor control
+  * `pandas` — data handling and CSV IO
+  * `numpy` — numerical ops
+  * `torch` (PyTorch) — model training & inference
+  * `scikit-learn` — scaling/preprocessing
+  * `rich` — console UI and visual feedback
+  * `matplotlib` — plotting trajectories
+  * `joblib` — save/load scalers
+  * `scipy` (optional) — smoothing (Gaussian filter)
+
+> Optional: `pygame`/`opencv` for advanced visualization (not required).
+
+---
+
+## 📁 Recommended project structure
+
+```
 mimic-cursor-spoofer/
 ├── data/
-│   └── mouse_movements.csv      # Stored mouse movement data (time, x, y)
+│   └── mouse_data.csv         # Recorded, preprocessed movement data
 ├── mimic/
-│   ├── __init__.py              # Package initialization
-│   ├── spoofer.py               # Cursor spoofing logic
-│   ├── model.py                 # Neural network training and prediction
-│   └── visuals.py               # Rich console UI and visualizations
-├── main.py                      # Entry point for the application
-├── requirements.txt             # Dependencies
-└── .gitignore                   # Git ignore rules
-
----
-✅ Current Features
-
-
-
-Feature
-Status
-Description
-
-
-
-Mouse Movement Data Collection
-✅
-Tracks cursor X, Y coordinates with timestamps.
-
-
-CSV Data Storage
-✅
-Saves movement data for reproducibility and analysis.
-
-
-Neural Network Training
-✅
-Uses a PyTorch LSTM to learn movement patterns.
-
-
-Real-Time Cursor Spoofing
-✅
-Simulates human-like cursor motion with pyautogui.
-
-
-Smart Spoofing Duration
-✅
-Limits spoofing to ≤75% of recorded data time for realism.
-
-
-Rich Console Visuals
-✅
-Interactive CLI with vibrant, hacker-style UX using rich.
+│   ├── __init__.py
+│   ├── collector.py           # Data collection
+│   ├── model.py               # Seq2Seq model
+│   ├── lstm_trainer.py        # Training loop + utils
+│   ├── spoofer.py             # Generation + live cursor movement
+│   ├── evaluator.py           # Plotting / evaluation utils
+│   └── visuals.py             # Rich UI helpers
+├── main.py                    # CLI entry point
+├── config.json                # Optional config/ hyperparameters
+├── requirements.txt
+└── README.md
+```
 
 ---
 
-🧬 How It Works
-1. Data Collection
+## ✅ Current features
 
-Step: User selects a recording duration (e.g., 15 seconds).
-Process: Tracks cursor movements (X, Y coordinates + timestamp).
-Output: Saves data as mouse_movements.csv in the data/ folder.
-Format: time, x, y
-
-
-
-2. Model Training
-
-Architecture: LSTM in PyTorch.
-Input: Timestamp.
-Output: Predicted (X, Y) cursor position.
-Training: Learns smooth, human-like movement patterns from collected data.
-
-3. Spoofing / Simulation
-
-Step: User specifies a spoof duration (max 75% of recorded time).
-Process: The trained model generates realistic (X, Y) coordinates.
-Execution: pyautogui.moveTo(x, y) drives the cursor in real-time, mimicking human behavior.
-
-4. Visual Feedback
-
-Console: Rich, terminal-based UI with live progress bars, stats, and cyberpunk-inspired aesthetics.
-Optional: Pygame/OpenCV for path visualization (planned for Phase 2).
+|                      Feature | Status | Description                                                          |
+| ---------------------------: | :----: | :------------------------------------------------------------------- |
+|  Mouse movement data capture |    ✅   | Records normalized deltas, dt, speed, acceleration, curvature.       |
+|             CSV data storage |    ✅   | Saves preprocessed movement samples for reproducibility.             |
+| Neural sequence model (LSTM) |    ✅   | Seq2Seq LSTM-based model to learn temporal patterns.                 |
+|    Real-time cursor spoofing |    ✅   | Replays generated cursor movement via `pyautogui`.                   |
+|        Smart spoofing bounds |    ✅   | Clamps deltas/dt and respects screen bounds to avoid runaway cursor. |
+|         Rich console visuals |    ✅   | Terminal UI, progress bars, success/error banners using `rich`.      |
 
 ---
 
-🛠️ Getting Started
-Prerequisites
+## 🧬 How it works (high level)
 
-Python 3.13.5
-Git
-A passion for hacking and ML 🤖
+### 1) Data collection
 
-Installation
+* The collector records mouse movements at a configured sample rate (e.g., 100 Hz).
+* Output features typically include: `dx_norm`, `dy_norm`, `speed`, `dt`, `curvature`, `x_accel_norm`, `y_accel_norm`.
+* Data is saved to `data/mouse_data.csv`.
 
-Clone the Repository:
+### 2) Model training
+
+* A Seq2Seq LSTM consumes sequences of length `seq_len` and predicts `pred_horizon` timesteps ahead.
+* Input = several features per timestep. Output = predicted future feature vectors.
+* Training uses a scaler (StandardScaler) saved to disk and includes validation/early stopping.
+
+### 3) Spoofing / simulation
+
+* The trained model is seeded with the latest `seq_len` recorded samples and generates deltas autoregressively.
+* Generated normalized deltas are denormalized and applied to the cursor with `pyautogui.moveTo` (or `moveRel`) at safe dt intervals.
+* Movements are clamped to screen bounds; dt and step sizes are clipped to realistic ranges.
+
+### 4) Evaluation
+
+* The evaluator plots recorded vs generated trajectories (positions derived from cumulative deltas) and saves an image for inspection.
+
+---
+
+## 🛠️ Getting started
+
+### Prerequisites
+
+* Python 3.8+ (the code is compatible with modern Python 3.x; if you use `3.13.5` ensure your environment matches available packages)
+* pip, git
+
+### Installation
+
+```bash
 git clone https://github.com/yourusername/mimic-cursor-spoofer.git
 cd mimic-cursor-spoofer
 
-
-Set Up a Virtual Environment:
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# macOS / Linux
+source venv/bin/activate
+# Windows
+# venv\Scripts\activate
 
-
-Install Dependencies:
 pip install -r requirements.txt
+```
 
+### Run the app
 
-Run the Application:
+```bash
 python main.py
+```
+
+The interactive CLI will guide you to record data, train the model, and run spoofing.
 
 ---
 
-Usage
+## Usage summary
 
-Launch main.py to access the interactive CLI.
-Choose from:
-Record: Capture mouse movements for a set duration.
-Train: Train the MLP model on collected data.
-Spoof: Simulate cursor movements using the trained model.
-
-
-Enjoy the hacker-ish console visuals and real-time feedback.
+* **Record**: choose a recording duration to capture mouse data into `data/mouse_data.csv`.
+* **Train**: train a Seq2Seq model (saves model to `models/mimic_model.pt`, scaler to `models/mimic_scaler.pkl`).
+* **Spoof**: load model + scaler, generate movements, and replay them live.
+* **Evaluate**: plotted trajectories saved to `models/trajectories.png`.
 
 ---
 
-🦸‍♂️ Why M.I.M.I.C?
-M.I.M.I.C is more than a tool—it's a playground for ML enthusiasts, security researchers, and automation hackers. It combines the precision of Tony Stark's JARVIS with the stealth of Batman's utility belt. Whether you're stress-testing anti-bot systems or exploring the limits of ML-driven automation, M.I.M.I.C is your partner in crime (ethically, of course).
+## 🔧 Configuration & tuning recommendations
+
+Add a `config.json` or edit the defaults in `main.py` for reproducible runs. Example (recommended starting point):
+
+```json
+{
+  "model_type": "seq2seq",
+  "epochs": 120,
+  "num_layers": 2,
+  "hidden_size": 128,
+  "pred_horizon": 15,
+  "seq_len": 150,
+  "lr": 0.0008,
+  "dropout": 0.3,
+  "batch_size": 64,
+  "teacher_forcing_ratio": 0.5
+}
+```
+
+### Parameters to tune (suggested ranges)
+
+* `seq_len`: **100–200** — longer sequence = more context (memory cost ↑).
+* `pred_horizon`: **10–30** — horizon to predict at each step; shorter is more stable.
+* `hidden_size`: **128–256** — model capacity.
+* `num_layers`: **1–3** — depth of LSTM.
+* `dropout`: **0.2–0.5** — regularization.
+* `batch_size`: **32–128** — GPU/CPU memory dependent.
+* `lr`: **5e-4 – 1e-3** — learning rate.
+* `teacher_forcing_ratio`: **0.3–0.7** — can be decayed over training.
 
 ---
 
-🛡️ Ethical Use
-M.I.M.I.C is designed for research, testing, and educational purposes. Do not use it to bypass security systems without explicit permission. Always respect privacy and legal boundaries.
+## ✅ Evaluation metrics & ideas
+
+* **MSE** on predicted features (dx, dy, speed).
+* **Dynamic Time Warping (DTW)** on 2D paths to measure shape similarity.
+* Compare **speed / acceleration / curvature** distributions (histograms / KDEs).
+* Visual inspection: overlay plots, animate trajectories.
 
 ---
 
-📜 License
-This project is licensed under the MIT License. See the LICENSE file for details.
+## 🧪 Safety & ethical use
+
+M.I.M.I.C. is intended for **research, testing, and educational** purposes only. Misuse (bypassing security, automating interactions without consent) is unethical and may be illegal. Always obtain explicit permission before testing systems that are not your own.
 
 ---
 
-## "Code like Tony Stark, sneak like Batman."Dive into M.I.M.I.C and start spoofing the unspoofable. 🚀
+## 🧾 License
+
+This project is released under the **MIT License**. See the `LICENSE` file for details.
+
+---
+
+## Appendix: example commands
+
+Record for 2 minutes (120s):
+
+```bash
+# run main and select "Collect" (option 1), or call directly if you want
+python main.py
+# Then enter '1' and provide 120 when prompted
+```
+
+Train:
+
+```bash
+python main.py
+# select "2" (Train model)
+```
+
+Spoof (after training):
+
+```bash
+python main.py
+# select "3" (Run cursor spoofer)
+```
+
+---
+
+## Final note
+
+**"Code like Tony Stark, sneak like Batman."**
+
 
