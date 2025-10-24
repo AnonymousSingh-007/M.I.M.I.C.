@@ -1,0 +1,19 @@
+{
+  "model_type": "seq2seq",
+  "epochs": 60,
+  "num_layers": 2,
+  "hidden_size": 256,
+  "pred_horizon": 2,
+  "seq_len": 150,
+  "lr": 0.0008,
+  "dropout": 0.3,
+  "batch_size": 256,
+  "teacher_forcing_ratio": 0.5,
+  "area": {
+    "mode": "percent",
+    "left_pct": 0.2,
+    "top_pct": 0.2,
+    "width_pct": 0.6,
+    "height_pct": 0.6
+  }
+}
