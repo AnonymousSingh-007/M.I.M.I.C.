@@ -16,7 +16,7 @@ logging.basicConfig(
 data_dir = 'data'          # folder with your collected CSVs
 public_dir = 'public_data' # folder with Balabit CSVs (optional)
 seq_len = 50               # sequence length for LSTM / diffusion
-output_prefix = ''         # change to 'public_' when running on Balabit
+output_prefix = 'public_'         # change to 'public_' when running on Balabit
 
 # Function to read and standardize one CSV
 def read_and_standardize_csv(filepath):
